@@ -106,7 +106,13 @@ export async function parseSessionFile(filePath: string): Promise<SessionMetrics
     
     if (!headerLine) return null;
     
-    const sessionData: SessionData = JSON.parse(headerLine);
+    let sessionData: SessionData;
+    try {
+      sessionData = JSON.parse(headerLine);
+    } catch (e) {
+      console.error('Failed to parse session header:', e);
+      return null;
+    }
     
     // Extract token usage from events in the session
     let totalInputTokens = 0;
@@ -255,13 +261,18 @@ export async function getHistoryData(): Promise<Array<{ sessionId: string; times
     const lines = content.split('\n').filter(line => line.trim());
     
     return lines.map(line => {
-      const parsed = JSON.parse(line);
-      return {
-        sessionId: parsed.session_id,
-        timestamp: new Date(parsed.ts * 1000), // Convert Unix timestamp
-        text: parsed.text,
-      };
-    }).filter(Boolean);
+      try {
+        const parsed = JSON.parse(line);
+        return {
+          sessionId: parsed.session_id,
+          timestamp: new Date(parsed.ts * 1000), // Convert Unix timestamp
+          text: parsed.text,
+        };
+      } catch (e) {
+        console.error('Failed to parse history line:', e);
+        return null;
+      }
+    }).filter((item): item is { sessionId: string; timestamp: Date; text: string } => item !== null);
   } catch (error) {
     console.error('Failed to read history file:', error);
     return [];
