@@ -142,7 +142,22 @@ pub async fn get_session_files() -> Result<Vec<String>, String> {
 
 #[tauri::command]
 pub async fn read_session_file(file_path: String) -> Result<String, String> {
-    fs::read_to_string(&file_path).map_err(|e| format!("Failed to read session file: {}", e))
+    // Validate input path to prevent path traversal attacks
+    if file_path.contains("..") || file_path.contains('\0') {
+        return Err("Invalid file path: path traversal not allowed".to_string());
+    }
+    
+    // Canonicalize path to resolve any remaining .. or symlinks
+    let canonical_path = std::path::Path::new(&file_path)
+        .canonicalize()
+        .map_err(|_| "Invalid file path or file does not exist".to_string())?;
+    
+    // Ensure it's actually a file and not a directory
+    if !canonical_path.is_file() {
+        return Err("Path is not a file".to_string());
+    }
+    
+    fs::read_to_string(&canonical_path).map_err(|e| format!("Failed to read session file: {}", e))
 }
 
 #[tauri::command]

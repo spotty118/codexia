@@ -17,9 +17,19 @@ pub fn discover_codex_command() -> Option<PathBuf> {
     let home = if cfg!(windows) {
         std::env::var("USERPROFILE")
             .or_else(|_| std::env::var("HOME"))
-            .unwrap_or_default()
+            .unwrap_or_else(|_| {
+                log::warn!("Could not determine home directory on Windows, using current directory");
+                std::env::current_dir()
+                    .map(|p| p.to_string_lossy().to_string())
+                    .unwrap_or_else(|_| ".".to_string())
+            })
     } else {
-        std::env::var("HOME").unwrap_or_default()
+        std::env::var("HOME").unwrap_or_else(|_| {
+            log::warn!("HOME environment variable not set, using current directory");
+            std::env::current_dir()
+                .map(|p| p.to_string_lossy().to_string())
+                .unwrap_or_else(|_| ".".to_string())
+        })
     };
     let binary_name = get_platform_binary_name();
 

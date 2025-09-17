@@ -23,6 +23,7 @@ export const useCodexEvents = ({
   const currentCommandMessageId = useRef<string | null>(null);
   const currentCommandInfo = useRef<{ command: string[], cwd: string } | null>(null);
   const lastTurnDiffRef = useRef<string | null>(null);
+  const processedEventIds = useRef<Set<string>>(new Set());
 
   const addMessageToStore = (message: ChatMessage) => {
     // Ensure conversation exists
@@ -76,6 +77,19 @@ export const useCodexEvents = ({
   }, [sessionId, updateMessage]);
 
   const handleCodexEvent = (event: CodexEvent) => {
+    // Prevent duplicate processing of the same event
+    const eventKey = `${event.id}-${event.msg.type}-${event.session_id}`;
+    if (processedEventIds.current.has(eventKey)) {
+      return;
+    }
+    processedEventIds.current.add(eventKey);
+    
+    // Clean up old event IDs to prevent memory growth (keep last 1000)
+    if (processedEventIds.current.size > 1000) {
+      const ids = Array.from(processedEventIds.current);
+      processedEventIds.current = new Set(ids.slice(-500));
+    }
+
     // If event has session_id, route only matching session
     if (event.session_id) {
       const rawSessionId = sessionId.startsWith('codex-event-')
@@ -607,11 +621,17 @@ export const useCodexEvents = ({
     
     // Cleanup function
     return () => {
-      eventUnlisten.then(fn => fn());
-      rawEventUnlisten.then(fn => fn());
+      eventUnlisten.then(fn => fn()).catch(() => {});
+      rawEventUnlisten.then(fn => fn()).catch(() => {});
+      
       // Clear streaming state when component unmounts or sessionId changes
       streamController.current.clearAll();
       currentStreamingMessageId.current = null;
+      currentCommandMessageId.current = null;
+      currentCommandInfo.current = null;
+      
+      // Clear processed event IDs to prevent memory leaks
+      processedEventIds.current.clear();
     };
   }, [sessionId, createStreamSink]);
 

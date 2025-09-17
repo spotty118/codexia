@@ -134,13 +134,10 @@ pub fn parse_session_file(content: &str, file_path: &Path) -> Option<Conversatio
         }
     }
 
-    // If we only have metadata (one line) and no messages, delete the file
+    // If we only have metadata (one line) and no messages, log but don't delete automatically
+    // File deletion should be handled by explicit user action, not during parsing
     if lines.len() == 1 && messages.is_empty() && session_id.is_some() {
-        if let Err(e) = fs::remove_file(file_path) {
-            eprintln!("Failed to delete metadata-only file {:?}: {}", file_path, e);
-        } else {
-            println!("Deleted metadata-only session file: {:?}", file_path);
-        }
+        log::warn!("Found metadata-only session file: {:?} (consider manual cleanup)", file_path);
         return None;
     }
 

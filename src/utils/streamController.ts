@@ -90,6 +90,9 @@ export class StreamController {
   applyFinalAnswer(message: string): boolean {
     if (!this.sink) return false;
     
+    // Clean up any existing state before beginning
+    this.stopCommitAnimation();
+    
     this.begin(this.sink);
     
     // Only inject if we haven't seen any deltas
@@ -137,20 +140,30 @@ export class StreamController {
   }
 
   private onCommitTick(): void {
-    if (!this.isActive || !this.sink) return;
-
-    const step = this.streamer.step();
-    
-    if (step.linesToAdd.length > 0) {
-      this.sink.insertLines(step.linesToAdd);
-    }
-    
-    if (step.isComplete) {
-      this.stopCommitAnimation();
-      
-      if (this.isFinishingAfterDrain) {
-        this.cleanup();
+    try {
+      if (!this.isActive || !this.sink) {
+        this.stopCommitAnimation();
+        return;
       }
+
+      const step = this.streamer.step();
+      
+      if (step.linesToAdd.length > 0) {
+        this.sink.insertLines(step.linesToAdd);
+      }
+      
+      if (step.isComplete) {
+        this.stopCommitAnimation();
+        
+        if (this.isFinishingAfterDrain) {
+          this.cleanup();
+        }
+      }
+    } catch (error) {
+      console.error('Error in stream animation tick:', error);
+      // Cleanup on error to prevent timer leaks
+      this.stopCommitAnimation();
+      this.cleanup();
     }
   }
 
