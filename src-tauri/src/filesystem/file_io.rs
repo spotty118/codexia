@@ -80,6 +80,11 @@ pub async fn write_file(file_path: String, content: String) -> Result<(), String
         return Err("Only text files can be edited".to_string());
     }
 
+    // Prevent writing extremely large files (protect against DoS)
+    if content.len() > 10 * 1024 * 1024 {  // 10MB limit
+        return Err("File content too large (max 10MB)".to_string());
+    }
+
     match fs::write(&expanded_path, content) {
         Ok(()) => Ok(()),
         Err(e) => Err(format!("Failed to write file: {}", e)),

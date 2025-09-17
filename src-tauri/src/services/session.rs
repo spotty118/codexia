@@ -236,7 +236,30 @@ pub async fn load_sessions_from_disk() -> Result<Vec<Conversation>, String> {
 }
 
 pub async fn delete_session_file(file_path: String) -> Result<(), String> {
-    fs::remove_file(&file_path).map_err(|e| format!("Failed to delete file '{}': {}", file_path, e))
+    // Validate input path to prevent path traversal attacks
+    if file_path.contains("..") || file_path.contains('\0') {
+        return Err("Invalid file path: path traversal not allowed".to_string());
+    }
+    
+    // Canonicalize path to resolve any .. or symlinks
+    let canonical_path = std::path::Path::new(&file_path)
+        .canonicalize()
+        .map_err(|_| "Invalid file path or file does not exist".to_string())?;
+    
+    // Ensure the file is within a reasonable directory structure (basic safety check)
+    let home_dir = dirs::home_dir().ok_or("Could not find home directory")?;
+    let codex_dir = home_dir.join(".codex");
+    
+    if !canonical_path.starts_with(&codex_dir) {
+        return Err("File deletion only allowed within .codex directory".to_string());
+    }
+    
+    // Ensure it's actually a file and not a directory
+    if !canonical_path.is_file() {
+        return Err("Path is not a file".to_string());
+    }
+    
+    fs::remove_file(&canonical_path).map_err(|e| format!("Failed to delete file '{}': {}", canonical_path.display(), e))
 }
 
 pub async fn get_latest_session_id() -> Result<Option<String>, String> {
