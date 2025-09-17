@@ -63,8 +63,8 @@ pub fn parse_session_file(content: &str, file_path: &Path) -> Option<Conversatio
                 && record.role.is_some()
                 && record.content.is_some()
             {
-                let role = record.role.unwrap();
-                let content_value = record.content.unwrap();
+                let role = record.role.expect("role is_some() check passed");
+                let content_value = record.content.expect("content is_some() check passed");
 
                 let content_text = if let Some(array) = content_value.as_array() {
                     array
@@ -134,13 +134,10 @@ pub fn parse_session_file(content: &str, file_path: &Path) -> Option<Conversatio
         }
     }
 
-    // If we only have metadata (one line) and no messages, delete the file
+    // If we only have metadata (one line) and no messages, log but don't delete automatically
+    // File deletion should be handled by explicit user action, not during parsing
     if lines.len() == 1 && messages.is_empty() && session_id.is_some() {
-        if let Err(e) = fs::remove_file(file_path) {
-            eprintln!("Failed to delete metadata-only file {:?}: {}", file_path, e);
-        } else {
-            println!("Deleted metadata-only session file: {:?}", file_path);
-        }
+        log::warn!("Found metadata-only session file: {:?} (consider manual cleanup)", file_path);
         return None;
     }
 
@@ -239,7 +236,30 @@ pub async fn load_sessions_from_disk() -> Result<Vec<Conversation>, String> {
 }
 
 pub async fn delete_session_file(file_path: String) -> Result<(), String> {
-    fs::remove_file(&file_path).map_err(|e| format!("Failed to delete file '{}': {}", file_path, e))
+    // Validate input path to prevent path traversal attacks
+    if file_path.contains("..") || file_path.contains('\0') {
+        return Err("Invalid file path: path traversal not allowed".to_string());
+    }
+    
+    // Canonicalize path to resolve any .. or symlinks
+    let canonical_path = std::path::Path::new(&file_path)
+        .canonicalize()
+        .map_err(|_| "Invalid file path or file does not exist".to_string())?;
+    
+    // Ensure the file is within a reasonable directory structure (basic safety check)
+    let home_dir = dirs::home_dir().ok_or("Could not find home directory")?;
+    let codex_dir = home_dir.join(".codex");
+    
+    if !canonical_path.starts_with(&codex_dir) {
+        return Err("File deletion only allowed within .codex directory".to_string());
+    }
+    
+    // Ensure it's actually a file and not a directory
+    if !canonical_path.is_file() {
+        return Err("Path is not a file".to_string());
+    }
+    
+    fs::remove_file(&canonical_path).map_err(|e| format!("Failed to delete file '{}': {}", canonical_path.display(), e))
 }
 
 pub async fn get_latest_session_id() -> Result<Option<String>, String> {

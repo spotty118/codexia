@@ -122,12 +122,21 @@ pub async fn pause_session(state: State<'_, CodexState>, session_id: String) -> 
 
 pub async fn close_session(state: State<'_, CodexState>, session_id: String) -> Result<(), String> {
     let mut sessions = state.sessions.lock().await;
-    if let Some(mut client) = sessions.remove(&session_id) {
-        client
-            .close_session()
-            .await
-            .map_err(|e| format!("Failed to close session: {}", e))?;
-        Ok(())
+    if let Some(mut client) = sessions.get_mut(&session_id) {
+        // Try to close session gracefully first
+        match client.close_session().await {
+            Ok(()) => {
+                // Only remove from map if close was successful
+                sessions.remove(&session_id);
+                Ok(())
+            }
+            Err(e) => {
+                // If close fails, still try to cleanup but report the error
+                log::warn!("Failed to close session {}: {}", session_id, e);
+                sessions.remove(&session_id);
+                Err(format!("Failed to close session: {}", e))
+            }
+        }
     } else {
         Err("Session not found".to_string())
     }

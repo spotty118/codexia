@@ -5,6 +5,11 @@ use std::process::Command;
 
 #[tauri::command]
 pub async fn get_git_file_diff(file_path: String) -> Result<GitDiff, String> {
+    // Validate input path to prevent path traversal attacks
+    if file_path.contains("..") || file_path.contains('\0') {
+        return Err("Invalid file path: path traversal not allowed".to_string());
+    }
+
     let expanded_path = if file_path.starts_with("~/") {
         let home = dirs::home_dir().ok_or_else(|| "Cannot find home directory".to_string())?;
         home.join(&file_path[2..])
@@ -12,21 +17,27 @@ pub async fn get_git_file_diff(file_path: String) -> Result<GitDiff, String> {
         Path::new(&file_path).to_path_buf()
     };
 
-    if !expanded_path.exists() {
+    // Canonicalize path to resolve any remaining .. or symlinks
+    let canonical_path = expanded_path
+        .canonicalize()
+        .map_err(|_| "Invalid file path or file does not exist".to_string())?;
+
+    if !canonical_path.exists() {
         return Err("File does not exist".to_string());
     }
 
     // Get current file content
-    let current_content = match fs::read_to_string(&expanded_path) {
+    let current_content = match fs::read_to_string(&canonical_path) {
         Ok(content) => content,
         Err(e) => return Err(format!("Failed to read current file: {}", e)),
     };
 
     // First check if we're in a git repository
+    let parent_dir = canonical_path.parent().unwrap_or_else(|| Path::new("."));
     let git_check = Command::new("git")
         .arg("rev-parse")
         .arg("--is-inside-work-tree")
-        .current_dir(&expanded_path.parent().unwrap_or_else(|| Path::new(".")))
+        .current_dir(parent_dir)
         .output();
 
     let in_git_repo = match git_check {
@@ -43,26 +54,26 @@ pub async fn get_git_file_diff(file_path: String) -> Result<GitDiff, String> {
     }
 
     // Use git diff to get the original content from the index/HEAD
+    let file_name = canonical_path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("unknown");
+    
     let git_show_output = Command::new("git")
         .arg("show")
-        .arg(&format!(
-            "HEAD:{}",
-            expanded_path
-                .file_name()
-                .unwrap_or_default()
-                .to_string_lossy()
-        ))
-        .current_dir(&expanded_path.parent().unwrap_or_else(|| Path::new(".")))
+        .arg(&format!("HEAD:{}", file_name))
+        .current_dir(parent_dir)
         .output();
 
     // If that fails, try with the full relative path
-    let output = if git_show_output.is_err() || !git_show_output.as_ref().unwrap().status.success()
+    let output = if git_show_output.is_err() || 
+        !git_show_output.as_ref().map(|o| o.status.success()).unwrap_or(false)
     {
         // Get git root and calculate relative path
         let git_root_output = Command::new("git")
             .arg("rev-parse")
             .arg("--show-toplevel")
-            .current_dir(&expanded_path.parent().unwrap_or_else(|| Path::new(".")))
+            .current_dir(parent_dir)
             .output();
 
         match git_root_output {
@@ -71,7 +82,7 @@ pub async fn get_git_file_diff(file_path: String) -> Result<GitDiff, String> {
                 let git_root = git_root_string.trim();
                 let git_root_path = Path::new(git_root);
 
-                if let Ok(rel_path) = expanded_path.strip_prefix(git_root_path) {
+                if let Ok(rel_path) = canonical_path.strip_prefix(git_root_path) {
                     Command::new("git")
                         .arg("show")
                         .arg(&format!("HEAD:{}", rel_path.to_string_lossy()))

@@ -142,7 +142,22 @@ pub async fn get_session_files() -> Result<Vec<String>, String> {
 
 #[tauri::command]
 pub async fn read_session_file(file_path: String) -> Result<String, String> {
-    fs::read_to_string(&file_path).map_err(|e| format!("Failed to read session file: {}", e))
+    // Validate input path to prevent path traversal attacks
+    if file_path.contains("..") || file_path.contains('\0') {
+        return Err("Invalid file path: path traversal not allowed".to_string());
+    }
+    
+    // Canonicalize path to resolve any remaining .. or symlinks
+    let canonical_path = std::path::Path::new(&file_path)
+        .canonicalize()
+        .map_err(|_| "Invalid file path or file does not exist".to_string())?;
+    
+    // Ensure it's actually a file and not a directory
+    if !canonical_path.is_file() {
+        return Err("Path is not a file".to_string());
+    }
+    
+    fs::read_to_string(&canonical_path).map_err(|e| format!("Failed to read session file: {}", e))
 }
 
 #[tauri::command]
@@ -159,22 +174,51 @@ pub async fn read_history_file() -> Result<String, String> {
 
 #[tauri::command]
 pub async fn find_rollout_path_for_session(session_uuid: String) -> Result<Option<String>, String> {
+    // Validate session UUID to prevent injection
+    if session_uuid.is_empty() || session_uuid.len() > 100 || !session_uuid.chars().all(|c| c.is_alphanumeric() || c == '-') {
+        return Err("Invalid session UUID format".to_string());
+    }
+
     let home = dirs::home_dir().ok_or("Could not find home directory")?;
     let sessions_dir = home.join(".codex").join("sessions");
     if !sessions_dir.exists() {
         return Ok(None);
     }
 
-    // Walk recursively year/month/day and find file ending with -<uuid>.jsonl
+    // Walk recursively with safeguards against infinite loops
     let needle = format!("-{}.jsonl", session_uuid);
-    let mut stack = vec![sessions_dir];
-    while let Some(dir) = stack.pop() {
+    let mut stack = vec![(sessions_dir, 0)]; // (path, depth)
+    let mut visited = std::collections::HashSet::new();
+    const MAX_DEPTH: usize = 10; // Prevent infinite recursion
+    const MAX_ENTRIES: usize = 10000; // Prevent DoS attacks
+    let mut entry_count = 0;
+
+    while let Some((dir, depth)) = stack.pop() {
+        if depth > MAX_DEPTH {
+            log::warn!("Maximum directory depth reached while searching for session");
+            continue;
+        }
+
+        // Prevent revisiting the same directory (symlink loops)
+        if let Ok(canonical) = dir.canonicalize() {
+            if !visited.insert(canonical) {
+                continue; // Already visited this directory
+            }
+        }
+
         if let Ok(entries) = std::fs::read_dir(&dir) {
             for entry in entries.flatten() {
+                entry_count += 1;
+                if entry_count > MAX_ENTRIES {
+                    log::warn!("Maximum entry count reached while searching for session");
+                    return Ok(None);
+                }
+
                 let path = entry.path();
                 if let Ok(ft) = entry.file_type() {
-                    if ft.is_dir() {
-                        stack.push(path);
+                    if ft.is_dir() && !ft.is_symlink() {
+                        // Only follow regular directories, not symlinks
+                        stack.push((path, depth + 1));
                     } else if ft.is_file() {
                         if let Some(name) = path.file_name().and_then(|s| s.to_str()) {
                             if name.ends_with(&needle) {
