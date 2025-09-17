@@ -63,8 +63,8 @@ pub fn parse_session_file(content: &str, file_path: &Path) -> Option<Conversatio
                 && record.role.is_some()
                 && record.content.is_some()
             {
-                let role = record.role.unwrap();
-                let content_value = record.content.unwrap();
+                let role = record.role.expect("role is_some() check passed");
+                let content_value = record.content.expect("content is_some() check passed");
 
                 let content_text = if let Some(array) = content_value.as_array() {
                     array
