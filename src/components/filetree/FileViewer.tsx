@@ -246,7 +246,9 @@ export function FileViewer({ filePath, onClose, addToNotepad }: FileViewerProps)
         const target = canonicalFile || filePath;
         if (changed === target) {
           // If user hasn’t modified content, auto-reload; otherwise show a banner
-          if (currentContent === content) {
+          // Use a more robust comparison to avoid race conditions
+          const hasUserChanges = currentContent !== content && currentContent.trim() !== content.trim();
+          if (!hasUserChanges) {
             await loadFile();
           } else {
             setDiskChanged(true);

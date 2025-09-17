@@ -56,7 +56,7 @@ pub async fn get_git_file_diff(file_path: String) -> Result<GitDiff, String> {
         .output();
 
     // If that fails, try with the full relative path
-    let output = if git_show_output.is_err() || !git_show_output.as_ref().unwrap().status.success()
+    let output = if git_show_output.is_err() || git_show_output.as_ref().map_or(true, |o| !o.status.success())
     {
         // Get git root and calculate relative path
         let git_root_output = Command::new("git")

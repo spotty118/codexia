@@ -47,7 +47,10 @@ pub async fn write_file(file_path: String, content: String) -> Result<(), String
         Some("txt") | Some("md") | Some("json") | Some("xml") | Some("yaml") | Some("yml")
         | Some("js") | Some("jsx") | Some("ts") | Some("tsx") | Some("rs") | Some("py")
         | Some("java") | Some("cpp") | Some("c") | Some("h") | Some("css") | Some("html")
-        | Some("toml") | Some("cfg") | Some("ini") | Some("sh") | Some("log") => true,
+        | Some("toml") | Some("cfg") | Some("ini") | Some("sh") | Some("log") | Some("go")
+        | Some("rb") | Some("php") | Some("swift") | Some("kt") | Some("scala") | Some("sql")
+        | Some("dockerfile") | Some("makefile") | Some("cmake") | Some("gitignore")
+        | Some("properties") | Some("env") | Some("conf") | Some("config") => true,
         _ => false,
     };
 
