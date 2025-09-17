@@ -41,7 +41,10 @@ export default function AuthPage() {
 
   const handleOAuthLogin = async (provider: "github" | "google") => {
     try {
-      const { data } = await supabase!.auth.signInWithOAuth({
+      if (!supabase) {
+        throw new Error("Supabase is not configured");
+      }
+      const { data } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
           skipBrowserRedirect: true,
