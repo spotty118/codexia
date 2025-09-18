@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { invoke } from '@tauri-apps/api/core';
 import type { 
   CodebaseSteeringFile,
   CodebaseSteeringConfig,
@@ -26,6 +27,7 @@ interface CodebaseSteeringStore extends CodebaseSteeringState {
   
   // File generation
   generateSteeringFiles: (configId: string) => Promise<{ product: string; tech: string; structure: string }>;
+  generateAndSaveSteeringFiles: (configId: string) => Promise<{ success: boolean; files: string[]; errors?: string[] }>;
   generateProductFile: (config: CodebaseSteeringConfig) => string;
   generateTechFile: (config: CodebaseSteeringConfig) => string;
   generateStructureFile: (config: CodebaseSteeringConfig) => string;
@@ -40,6 +42,9 @@ interface CodebaseSteeringStore extends CodebaseSteeringState {
   detectProjectStructure: (codebasePath: string) => Promise<Partial<ProjectStructure>>;
   detectTechnologyStack: (codebasePath: string) => Promise<Partial<TechnologyStack>>;
   suggestProductOverview: (codebaseName: string, codebasePath: string) => Promise<Partial<ProductOverview>>;
+  
+  // Auto-generation workflow
+  autoGenerateForCurrentProject: () => Promise<{ success: boolean; files: string[]; errors?: string[] }>;
 }
 
 export const useCodebaseSteeringStore = create<CodebaseSteeringStore>()(
@@ -181,6 +186,58 @@ export const useCodebaseSteeringStore = create<CodebaseSteeringStore>()(
           product: productContent,
           tech: techContent,
           structure: structureContent,
+        };
+      },
+
+      generateAndSaveSteeringFiles: async (configId: string) => {
+        const state = get();
+        const config = state.configurations[configId];
+        if (!config) {
+          throw new Error('Configuration not found');
+        }
+
+        const productContent = get().generateProductFile(config);
+        const techContent = get().generateTechFile(config);
+        const structureContent = get().generateStructureFile(config);
+
+        const files = [
+          { filename: 'product.md', content: productContent },
+          { filename: 'tech.md', content: techContent },
+          { filename: 'structure.md', content: structureContent },
+        ];
+
+        const savedFiles: string[] = [];
+        const errors: string[] = [];
+
+        // Save each file to the codebase root directory
+        for (const file of files) {
+          try {
+            const filePath = `${config.codebase_path}/${file.filename}`;
+            await invoke('write_file', {
+              filePath,
+              content: file.content
+            });
+            savedFiles.push(filePath);
+            
+            // Also save to store for tracking
+            get().saveFile({
+              filename: file.filename,
+              content: file.content,
+              type: file.filename.replace('.md', '') as 'product' | 'tech' | 'structure',
+              codebase_path: config.codebase_path,
+              codebase_name: config.codebase_name,
+            });
+          } catch (error) {
+            const errorMsg = `Failed to save ${file.filename}: ${error}`;
+            errors.push(errorMsg);
+            console.error(errorMsg);
+          }
+        }
+
+        return {
+          success: errors.length === 0,
+          files: savedFiles,
+          errors: errors.length > 0 ? errors : undefined,
         };
       },
 
@@ -364,6 +421,42 @@ export const useCodebaseSteeringStore = create<CodebaseSteeringStore>()(
           key_features: ['Feature 1', 'Feature 2'],
           business_objectives: ['Objective 1', 'Objective 2'],
         };
+      },
+
+      autoGenerateForCurrentProject: async () => {
+        const state = get();
+        if (!state.current_codebase) {
+          throw new Error('No current codebase selected');
+        }
+
+        const config = state.configurations[state.current_codebase];
+        if (!config) {
+          throw new Error('Current codebase configuration not found');
+        }
+
+        // Auto-detect and update configuration
+        try {
+          const detectedTech = await get().detectTechnologyStack(config.codebase_path);
+          const detectedStructure = await get().detectProjectStructure(config.codebase_path);
+          const detectedProduct = await get().suggestProductOverview(config.codebase_name, config.codebase_path);
+
+          // Update configuration with detected values
+          get().updateConfiguration(state.current_codebase, {
+            tech: { ...config.tech, ...detectedTech },
+            structure: { ...config.structure, ...detectedStructure },
+            product: { ...config.product, ...detectedProduct },
+          });
+
+          // Generate and save files
+          return await get().generateAndSaveSteeringFiles(state.current_codebase);
+        } catch (error) {
+          console.error('Auto-generation failed:', error);
+          return {
+            success: false,
+            files: [],
+            errors: [`Auto-generation failed: ${error}`],
+          };
+        }
       },
     }),
     {

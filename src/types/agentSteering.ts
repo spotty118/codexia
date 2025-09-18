@@ -126,5 +126,35 @@ export const DEFAULT_STEERING_TEMPLATES: SteeringSpecTemplate[] = [
       message: "This is a long conversation. Consider summarizing progress or breaking into subtasks.",
       priority: 'medium' 
     }]
+  },
+  {
+    name: "Coding Task Focus Reminder",
+    description: "Remind agent to stay focused on the main coding objective",
+    triggers: [{ type: 'time_interval', intervalMs: 3 * 60 * 1000 }], // Every 3 minutes
+    actions: [{ 
+      type: 'reminder', 
+      message: "Stay focused on the main coding objective. Ensure all changes align with the spec steering files (product.md, tech.md, structure.md) in the project root.",
+      priority: 'high' 
+    }]
+  },
+  {
+    name: "Spec File Adherence Check",
+    description: "Remind agent to check spec steering files when making changes",
+    triggers: [{ type: 'context_change', filePattern: '.ts,.tsx,.js,.jsx' }],
+    actions: [{ 
+      type: 'reminder', 
+      message: "When making code changes, ensure they follow the guidelines in product.md, tech.md, and structure.md files.",
+      priority: 'medium' 
+    }]
+  },
+  {
+    name: "Auto-Generate Steering Files",
+    description: "Suggest generating steering files if they don't exist",
+    triggers: [{ type: 'manual' }], // This will be triggered manually or on project start
+    actions: [{ 
+      type: 'suggestion', 
+      content: "Consider auto-generating the spec steering files (product.md, tech.md, structure.md) to help maintain project focus.",
+      auto_dismiss: false
+    }]
   }
 ];
