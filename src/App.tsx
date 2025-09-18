@@ -1,15 +1,11 @@
-import { useEffect } from "react";
-import { useLayoutStore } from "./stores/layoutStore";
+import { SimpleApp } from "./components/SimpleApp";
 import "./App.css";
 
+/**
+ * Simplified App entry point
+ * Removes complex routing and focuses on core functionality
+ */
+
 export default function App() {
-  const { lastRoute } = useLayoutStore();
-
-  useEffect(() => {
-    if (lastRoute && lastRoute !== "/") {
-      window.location.hash = lastRoute;
-    }
-  }, []);
-
-  return null;
+  return <SimpleApp />;
 }
