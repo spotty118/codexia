@@ -1,16 +1,18 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { RouterProvider } from "react-router-dom";
-import { router } from "./router";
+import App from "./App";
 import { ThemeProvider } from "@/components/common/ThemeProvider";
 import "./App.css";
-import { UpdateChecker } from "./components/UpdateChecker";
+
+/**
+ * Simplified main entry point
+ * Removes complex routing and uses the simplified App component directly
+ */
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <ThemeProvider>
-      <RouterProvider router={router} />
-      <UpdateChecker />
+      <App />
     </ThemeProvider>
   </React.StrictMode>,
 );
