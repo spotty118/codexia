@@ -206,13 +206,11 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         </div>
       </div>
       
-      {/* Context Analyzer Modal - Temporarily disabled for debugging */}
-      {false && (
-        <ContextAnalyzer
-          isOpen={showContextAnalyzer}
-          onClose={() => setShowContextAnalyzer(false)}
-        />
-      )}
+      {/* Context Analyzer Modal */}
+      <ContextAnalyzer
+        isOpen={showContextAnalyzer}
+        onClose={() => setShowContextAnalyzer(false)}
+      />
     </div>
   );
 };
