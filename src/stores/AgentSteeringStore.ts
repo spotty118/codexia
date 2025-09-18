@@ -38,6 +38,10 @@ interface AgentSteeringStore extends AgentSteeringState {
   getSpecsForConversation: (conversationId?: string) => AgentSteeringSpec[];
   isSpecInCooldown: (specId: string) => boolean;
   getSpecActivationCount: (specId: string) => number;
+  
+  // Auto-setup methods for coding task reminders
+  setupCodingTaskReminders: () => void;
+  enableSteeringFileReminders: () => void;
 }
 
 interface EvaluationContext {
@@ -354,6 +358,36 @@ export const useAgentSteeringStore = create<AgentSteeringStore>()(
       getSpecActivationCount: (specId: string) => {
         const state = get();
         return Object.values(state.activations).filter(activation => activation.spec_id === specId).length;
+      },
+
+      setupCodingTaskReminders: () => {
+        // Create the coding task focus reminder spec (template index 4)
+        const templates = DEFAULT_STEERING_TEMPLATES;
+        const focusTemplateIndex = templates.findIndex(t => t.name === "Coding Task Focus Reminder");
+        const adherenceTemplateIndex = templates.findIndex(t => t.name === "Spec File Adherence Check");
+        
+        const focusSpecId = focusTemplateIndex >= 0 ? get().createSpecFromTemplate(focusTemplateIndex) : '';
+        const adherenceSpecId = adherenceTemplateIndex >= 0 ? get().createSpecFromTemplate(adherenceTemplateIndex) : '';
+        
+        console.log('Coding task reminders setup completed', { focusSpecId, adherenceSpecId });
+      },
+
+      enableSteeringFileReminders: () => {
+        // Create all the new steering-related specs
+        const templates = DEFAULT_STEERING_TEMPLATES;
+        const steeringTemplateNames = [
+          "Coding Task Focus Reminder",
+          "Spec File Adherence Check", 
+          "Auto-Generate Steering Files"
+        ];
+        
+        const createdSpecs = steeringTemplateNames.map(name => {
+          const templateIndex = templates.findIndex(t => t.name === name);
+          return templateIndex >= 0 ? get().createSpecFromTemplate(templateIndex) : '';
+        }).filter(id => id !== '');
+        
+        console.log('Steering file reminders enabled', { createdSpecs });
+        return createdSpecs;
       },
     }),
     {
