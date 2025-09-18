@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { invokeWithDefault } from "@/utils/tauri";
 import { listen, UnlistenFn } from "@tauri-apps/api/event";
 import { useSettingsStore } from "@/stores/SettingsStore";
 import { useFolderStore } from "@/stores/FolderStore";
@@ -54,12 +54,12 @@ export function FileTree({
     try {
       let targetPath = path || currentFolder;
       if (!targetPath) {
-        const defaultDirs = await invoke<string[]>("get_default_directories");
+        const defaultDirs = await invokeWithDefault<string[]>("get_default_directories", []);
         targetPath = defaultDirs[0];
         setCurrentFolder(targetPath);
       }
 
-      const result = await invoke<FileEntry[]>("read_directory", {
+      const result = await invokeWithDefault<FileEntry[]>("read_directory", [], {
         path: targetPath,
       });
       setEntries(result);
