@@ -13,7 +13,7 @@ import { useCodexEvents } from "../../hooks/useCodexEvents";
 import { ReasoningEffortSelector } from './ReasoningEffortSelector';
 import { Sandbox } from "./Sandbox";
 import { generateUniqueId } from "@/utils/genUniqueId";
-import { ForkOriginBanner } from './ForkOriginBanner';
+
 import { useEphemeralStore } from '@/stores/EphemeralStore';
 import { ChangesSummary } from './ChangesSummary';
 import { ModelSelector } from "./ModelSelector";
@@ -315,22 +315,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       return;
     }
 
-    // If this is a forked conversation and not yet applied, prepend context
-    if (currentConversation?.forkMeta && !currentConversation.forkMeta.applied) {
-      try {
-        const meta = currentConversation.forkMeta;
-        const historyText = meta.history
-          .filter((m) => m.role === 'user' || m.role === 'assistant')
-          .map((m) => `${m.role}:\n${m.content}`)
-          .join("\n\n");
-        const forkHeader = `parentId: ${meta.parentMessageId}\nsourceSession: ${meta.fromConversationId}`;
-        const combined = `${forkHeader}\n\nConversation history:\n${historyText}\n\nUser:\n${messageContent}`;
-        messageContent = combined;
-      } catch (e) {
-        console.error('Failed to build fork context:', e);
-      }
-    }
-
     // If resending from an edited message, truncate messages from that point
     try {
       const { editingTarget, clearEditingTarget } = useChatInputStore.getState();
@@ -365,11 +349,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
         message: messageContent,
       });
       console.log("📤 ChatInterface: Sending text message:", messageContent);
-
-      // Mark fork context as applied so future sends don't include it
-      if (currentConversation?.forkMeta && !currentConversation.forkMeta.applied) {
-        useConversationStore.getState().setForkMetaApplied(actualSessionId);
-      }
     } catch (error) {
       console.error("Failed to send message:", error);
       const errorMessage = {
@@ -447,12 +426,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   return (
     <div className="flex h-full min-h-0">
       <div className="flex flex-col flex-1 min-h-0 min-w-0">
-        {currentConversation?.forkMeta && (
-          <ForkOriginBanner
-            fromConversationId={currentConversation.forkMeta.fromConversationId}
-            parentMessageId={currentConversation.forkMeta.parentMessageId}
-          />
-        )}
         <MessageList
           messages={messages}
           isLoading={isLoading}

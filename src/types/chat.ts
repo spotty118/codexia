@@ -46,18 +46,9 @@ export interface Conversation {
   filePath?: string;
   isLoading?: boolean;
   projectRealpath?: string;
-  // Optional category assignment for filtering
-  categoryId?: string | null;
   // Backend session correlation and resume
   codexSessionId?: string; // UUID from SessionConfigured
   resumePath?: string; // Path to rollout jsonl for resume
-  // Fork metadata for branching conversations
-  forkMeta?: {
-    fromConversationId: string;
-    parentMessageId: string;
-    history: ChatMessage[];
-    applied?: boolean; // whether the fork context has been sent to backend
-  };
 }
 
 export type Provider =
