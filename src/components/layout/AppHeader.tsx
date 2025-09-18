@@ -9,6 +9,7 @@ import {
   Brain,
   Palette,
   Target,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +19,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useState, useEffect } from "react";
 import { McpDialog } from "../dialogs/McpDialog";
 import { AgentSteeringConfig } from "../dialogs/AgentSteeringConfig";
+import { CodebaseSteeringDialog } from "../dialogs/CodebaseSteeringDialog";
 import { useThemeStore, type Accent } from "@/stores/ThemeStore";
 import { useSettingsStore } from "@/stores/SettingsStore";
 import { useAuth } from "@/hooks/useAuth";
@@ -121,8 +123,17 @@ export function AppHeader() {
             <AgentSteeringConfig 
               trigger={
                 <Button variant="ghost" className="flex gap-1 h-6">
-                  <Target className="w-4 h-4" />
+                  <Target className="w-4 w-4" />
                   Steering
+                </Button>
+              }
+            />
+            
+            <CodebaseSteeringDialog 
+              trigger={
+                <Button variant="ghost" className="flex gap-1 h-6">
+                  <FileText className="w-4 h-4" />
+                  Generate Steering
                 </Button>
               }
             />
