@@ -39,7 +39,7 @@ export function FileTree({
   const [isSearching, setIsSearching] = useState(false);
   const { excludeFolders } = useSettingsStore();
   const { setCurrentFolder } = useFolderStore();
-  const { addFile, clearFiles } = useContextFilesStore();
+  const { addFile, clearFiles, markFileUsed } = useContextFilesStore();
   const { calculateTokens } = useFileTokens();
   const [refreshMap, setRefreshMap] = useState<Record<string, number>>({});
   const watchedFoldersRef = useRef<Set<string>>(new Set());
@@ -101,17 +101,39 @@ export function FileTree({
     setExpandedFolders(newExpanded);
   };
 
-  const handleAddToChat = (path: string) => {
-    addFile(path);
+  const handleAddToChat = async (path: string) => {
+    try {
+      // Get file stats for enhanced metadata
+      const fileStats = await invoke<any>("get_file_stats", { path });
+      addFile(path, {
+        size: fileStats?.size,
+      });
+      markFileUsed(path);
+    } catch (error) {
+      // Fallback to basic add if stats fail
+      addFile(path);
+    }
+    
     if (onAddToChat) {
       onAddToChat(path);
     }
   };
 
-  const handleFileClick = (path: string, isDirectory: boolean) => {
+  const handleFileClick = async (path: string, isDirectory: boolean) => {
     if (!isDirectory) {
       clearFiles();
-      addFile(path);
+      try {
+        // Get file stats for enhanced metadata
+        const fileStats = await invoke<any>("get_file_stats", { path });
+        addFile(path, {
+          size: fileStats?.size,
+        });
+        markFileUsed(path);
+      } catch (error) {
+        // Fallback to basic add if stats fail
+        addFile(path);
+      }
+      
       if (onFileClick) {
         onFileClick(path);
       }

@@ -1,7 +1,7 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
-import { ArrowUp, Square, AudioLines, Globe } from 'lucide-react';
+import { ArrowUp, Square, AudioLines, Globe, Brain } from 'lucide-react';
 import { useChatInputStore } from '@/stores/chatInputStore';
 import { MediaSelector } from './MediaSelector';
 import { FileReferenceList } from './FileReferenceList';
@@ -9,6 +9,7 @@ import { MediaAttachmentList } from './MediaAttachmentList';
 import { useSettingsStore } from '@/stores/SettingsStore';
 import { ScreenshotPopover } from './ScreenshotPopover';
 import { useCodexStore } from '@/stores/CodexStore';
+import { ContextAnalyzer } from './ContextAnalyzer';
 
 interface ChatInputProps {
   inputValue: string;
@@ -40,6 +41,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   } = useChatInputStore();
   const { windowTitle } = useSettingsStore()
   const { config, updateConfig } = useCodexStore();
+  const [showContextAnalyzer, setShowContextAnalyzer] = useState(false);
 
   // Ref for the textarea to allow programmatic focus
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -166,6 +168,18 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               <span className="ml-1 text-xs">search</span>
             )}
           </Button>
+          
+          {/* Context Analyzer toggle */}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-6 px-1 py-0 hover:bg-muted/50 text-muted-foreground hover:text-blue-500"
+            onClick={() => setShowContextAnalyzer(true)}
+            title="Open Context Intelligence"
+          >
+            <Brain className="h-4 w-4" />
+          </Button>
         </div>
 
         {/* Model Selector and Send Button - bottom right inside textarea */}
@@ -191,6 +205,12 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           )}
         </div>
       </div>
+      
+      {/* Context Analyzer Modal */}
+      <ContextAnalyzer
+        isOpen={showContextAnalyzer}
+        onClose={() => setShowContextAnalyzer(false)}
+      />
     </div>
   );
 };
