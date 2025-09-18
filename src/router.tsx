@@ -6,6 +6,7 @@ import ProjectsPage from "@/pages/projects";
 import DxtPage from "./pages/dxt";
 import SettingsPage from "./pages/settings";
 import UsagePage from "./pages/usage";
+import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { useDeepLink } from "./hooks/useDeepLink";
 import { useEffect } from "react";
 import { useLayoutStore } from "./stores/layoutStore";
@@ -52,34 +53,62 @@ function RequireAuth() {
 export const router = createHashRouter([
   {
     path: "/",
-    element: <Root />,
+    element: (
+      <ErrorBoundary>
+        <Root />
+      </ErrorBoundary>
+    ),
     children: [
       {
         path: "login",
-        element: <LoginPage />,
+        element: (
+          <ErrorBoundary>
+            <LoginPage />
+          </ErrorBoundary>
+        ),
       },
       {
         element: <RequireAuth />,
         children: [
           {
             index: true,
-            element: <ProjectsPage />,
+            element: (
+              <ErrorBoundary>
+                <ProjectsPage />
+              </ErrorBoundary>
+            ),
           },
           {
             path: "chat",
-            element: <ChatPage />,
+            element: (
+              <ErrorBoundary>
+                <ChatPage />
+              </ErrorBoundary>
+            ),
           },
           {
             path: "dxt",
-            element: <DxtPage />,
+            element: (
+              <ErrorBoundary>
+                <DxtPage />
+              </ErrorBoundary>
+            ),
           },
           {
             path: "settings",
-            element: <SettingsPage />,
+            element: (
+              <ErrorBoundary>
+                <SettingsPage />
+              </ErrorBoundary>
+            ),
           },
           {
             path: "usage",
-            element: <UsagePage />,
+            element: (
+              <ErrorBoundary>
+                <UsagePage />
+              </ErrorBoundary>
+            ),
           },
         ],
       },
