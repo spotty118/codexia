@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Codebase Steering Files Demo</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header {
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 16px;
+            margin-bottom: 24px;
+        }
+        .title {
+            font-size: 24px;
+            font-weight: 600;
+            margin: 0 0 8px 0;
+            color: #1a202c;
+        }
+        .subtitle {
+            color: #718096;
+            margin: 0;
+        }
+        .button {
+            background: #3182ce;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 8px 8px 8px 0;
+        }
+        .button:hover {
+            background: #2c5aa0;
+        }
+        .button-outline {
+            background: transparent;
+            color: #3182ce;
+            border: 1px solid #3182ce;
+        }
+        .button-outline:hover {
+            background: #3182ce;
+            color: white;
+        }
+        .file-preview {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 16px;
+            margin: 16px 0;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 4px;
+            color: #374151;
+        }
+        .input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        .success {
+            background: #f0f9ff;
+            border: 1px solid #0ea5e9;
+            color: #0369a1;
+            padding: 12px;
+            border-radius: 6px;
+            margin: 16px 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState } = React;
+
+        function CodebaseSteeringDemo() {
+            const [projectName, setProjectName] = useState('My Project');
+            const [projectPath, setProjectPath] = useState('/path/to/my/project');
+            const [generated, setGenerated] = useState(false);
+            const [generatedFiles, setGeneratedFiles] = useState(null);
+
+            const generateFiles = () => {
+                const now = new Date().toISOString();
+                
+                const productFile = `# Product Overview
+
+## Purpose
+This is a modern web application designed to provide excellent user experience.
+
+## Target Users
+- Developers
+- End users
+- Project managers
+
+## Key Features
+- Feature 1: User-friendly interface
+- Feature 2: Real-time updates
+- Feature 3: Responsive design
+
+## Business Objectives
+- Increase user engagement
+- Improve development efficiency
+- Enhance product quality
+
+---
+Generated on: ${now}
+Codebase: ${projectName}
+`;
+
+                const techFile = `# Technology Stack
+
+## Frontend
+- **Framework**: React
+- **UI Library**: shadcn/ui
+- **State Management**: Zustand
+- **Build Tool**: Vite
+- **Testing**: TypeScript
+
+## Development Tools
+- **Package Manager**: npm
+- **Version Control**: git
+- **Linting**: ESLint
+- **Formatting**: Prettier
+
+## Constraints
+- **Node Version**: ^18.0.0
+- **Browser Support**: Chrome, Firefox, Safari, Edge
+- **Performance Requirements**: Fast loading times
+- **Security Requirements**: Secure authentication
+
+---
+Generated on: ${now}
+Codebase: ${projectName}
+`;
+
+                const structureFile = `# Project Structure
+
+## Root Directory
+\`\`\`
+${projectPath}
+\`\`\`
+
+## Main Directories
+- **src/**: Source code
+  - Conventions: Use clear naming
+- **public/**: Static assets
+- **docs/**: Documentation
+
+## File Naming Conventions
+- **Components**: PascalCase.tsx
+- **Utilities**: camelCase.ts
+- **Types**: camelCase.ts
+- **Tests**: *.test.ts
+
+## Import Patterns
+- **Relative Imports**: ./filename
+- **Absolute Imports**: @/path/to/file
+- **Barrel Exports**: Yes
+
+## Architectural Decisions
+- **Component-based architecture**: Better maintainability and reusability
+
+---
+Generated on: ${now}
+Codebase: ${projectName}
+`;
+
+                setGeneratedFiles({
+                    product: productFile,
+                    tech: techFile,
+                    structure: structureFile
+                });
+                setGenerated(true);
+            };
+
+            const downloadFile = (content, filename) => {
+                const blob = new Blob([content], { type: 'text/markdown' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            };
+
+            return (
+                <div className="container">
+                    <div className="header">
+                        <h1 className="title">🎯 Codebase Steering Files Generator</h1>
+                        <p className="subtitle">
+                            Generate steering files (product.md, tech.md, structure.md) to guide AI agents working on your codebase.
+                        </p>
+                    </div>
+
+                    <div className="form-group">
+                        <div className="grid">
+                            <div>
+                                <label className="label">Project Name</label>
+                                <input 
+                                    className="input"
+                                    value={projectName}
+                                    onChange={(e) => setProjectName(e.target.value)}
+                                    placeholder="My Project"
+                                />
+                            </div>
+                            <div>
+                                <label className="label">Project Path</label>
+                                <input 
+                                    className="input"
+                                    value={projectPath}
+                                    onChange={(e) => setProjectPath(e.target.value)}
+                                    placeholder="/path/to/project"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <button className="button" onClick={generateFiles}>
+                        📁 Generate Steering Files
+                    </button>
+
+                    {generated && (
+                        <div className="success">
+                            ✅ Successfully generated 3 steering files! These files will help guide AI agents working on your codebase by providing:
+                            <ul>
+                                <li><strong>product.md</strong> - Product purpose, users, features, and objectives</li>
+                                <li><strong>tech.md</strong> - Technology stack and development tools</li>
+                                <li><strong>structure.md</strong> - Project structure and conventions</li>
+                            </ul>
+                        </div>
+                    )}
+
+                    {generatedFiles && (
+                        <div>
+                            <h3>Generated Files:</h3>
+                            
+                            <h4>📄 product.md</h4>
+                            <button 
+                                className="button button-outline"
+                                onClick={() => downloadFile(generatedFiles.product, 'product.md')}
+                            >
+                                Download product.md
+                            </button>
+                            <div className="file-preview">{generatedFiles.product}</div>
+
+                            <h4>⚙️ tech.md</h4>
+                            <button 
+                                className="button button-outline"
+                                onClick={() => downloadFile(generatedFiles.tech, 'tech.md')}
+                            >
+                                Download tech.md
+                            </button>
+                            <div className="file-preview">{generatedFiles.tech}</div>
+
+                            <h4>🏗️ structure.md</h4>
+                            <button 
+                                className="button button-outline"
+                                onClick={() => downloadFile(generatedFiles.structure, 'structure.md')}
+                            >
+                                Download structure.md
+                            </button>
+                            <div className="file-preview">{generatedFiles.structure}</div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        ReactDOM.render(<CodebaseSteeringDemo />, document.getElementById('root'));
+    </script>
+</body>
+</html>
