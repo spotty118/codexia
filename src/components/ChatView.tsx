@@ -125,6 +125,12 @@ export const ChatView: React.FC<ChatViewProps> = ({ selectedConversation, showCh
               variant="outline"
               onClick={async () => {
                 try {
+                  // Check if Tauri API is available
+                  if (typeof window === 'undefined' || !window.__TAURI__) {
+                    console.warn('Tauri API not available, cannot load sessions');
+                    return;
+                  }
+
                   setResumeLoading(true);
                   const list = (await invoke<Conversation[]>("load_sessions_from_disk")) || [];
                   console.log("[Resume] loaded sessions from disk:", list.length, list);
@@ -292,6 +298,13 @@ export const ChatView: React.FC<ChatViewProps> = ({ selectedConversation, showCh
                             .map((c) => (c as any).filePath as string | undefined)
                             .filter((fp): fp is string => !!fp && resumeSelected[fp]);
                           if (selectedPaths.length === 0) return;
+                          
+                          // Check if Tauri API is available
+                          if (typeof window === 'undefined' || !window.__TAURI__) {
+                            console.warn('Tauri API not available, cannot delete session files');
+                            return;
+                          }
+
                           try {
                             // Delete files in parallel
                             await Promise.all(

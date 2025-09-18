@@ -1,9 +1,14 @@
-import { invoke } from '@tauri-apps/api/core';
+import { invokeWithDefault } from '@/utils/tauri';
 import { ModelProvider, Profile, ProviderConfig } from '@/types/config';
 
 export class ConfigService {
   static async getProviderConfig(providerName: string): Promise<ProviderConfig | null> {
     try {
+      if (!isTauriAvailable()) {
+        console.warn('Tauri API not available, returning null for provider config');
+        return null;
+      }
+      
       const result = await invoke<[ModelProvider, Profile | null] | null>('get_provider_config', {
         providerName
       });
@@ -25,6 +30,11 @@ export class ConfigService {
 
   static async getProfileConfig(profileName: string): Promise<Profile | null> {
     try {
+      if (!isTauriAvailable()) {
+        console.warn('Tauri API not available, returning null for profile config');
+        return null;
+      }
+      
       const result = await invoke<Profile | null>('get_profile_config', {
         profileName
       });
@@ -37,23 +47,11 @@ export class ConfigService {
   }
 
   static async getAllProviders(): Promise<Record<string, ModelProvider>> {
-    try {
-      const result = await invoke<Record<string, ModelProvider>>('read_model_providers');
-      return result;
-    } catch (error) {
-      console.error('Failed to get all providers:', error);
-      return {};
-    }
+    return await invokeWithDefault('read_model_providers', {});
   }
 
   static async getAllProfiles(): Promise<Record<string, Profile>> {
-    try {
-      const result = await invoke<Record<string, Profile>>('read_profiles');
-      return result;
-    } catch (error) {
-      console.error('Failed to get all profiles:', error);
-      return {};
-    }
+    return await invokeWithDefault('read_profiles', {});
   }
 
   // Helper method to get configuration for commonly used providers
@@ -74,6 +72,11 @@ export class ConfigService {
   // Write methods for updating configuration
   static async updateProfileModel(profileName: string, newModel: string): Promise<void> {
     try {
+      if (!isTauriAvailable()) {
+        console.warn('Tauri API not available, skipping profile model update');
+        return;
+      }
+      
       await invoke('update_profile_model', {
         profileName,
         newModel
@@ -86,6 +89,11 @@ export class ConfigService {
 
   static async addOrUpdateProfile(profileName: string, profile: Profile): Promise<void> {
     try {
+      if (!isTauriAvailable()) {
+        console.warn('Tauri API not available, skipping profile add/update');
+        return;
+      }
+      
       await invoke('add_or_update_profile', {
         profileName,
         profile
@@ -98,6 +106,11 @@ export class ConfigService {
 
   static async deleteProfile(profileName: string): Promise<void> {
     try {
+      if (!isTauriAvailable()) {
+        console.warn('Tauri API not available, skipping profile deletion');
+        return;
+      }
+      
       await invoke('delete_profile', {
         profileName
       });
@@ -109,6 +122,11 @@ export class ConfigService {
 
   static async addOrUpdateModelProvider(providerName: string, provider: ModelProvider): Promise<void> {
     try {
+      if (!isTauriAvailable()) {
+        console.warn('Tauri API not available, skipping model provider add/update');
+        return;
+      }
+      
       await invoke('add_or_update_model_provider', {
         providerName,
         provider

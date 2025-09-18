@@ -67,6 +67,12 @@ export default function ChatPage() {
 
   const handleDiffClick = async (filePath: string) => {
     try {
+      // Check if Tauri API is available
+      if (typeof window === 'undefined' || !window.__TAURI__) {
+        console.warn('Tauri API not available, cannot get git diff');
+        return;
+      }
+
       console.log("handleDiffClick called with:", filePath);
       console.log("currentFolder:", currentFolder);
 
