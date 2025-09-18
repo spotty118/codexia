@@ -2,9 +2,11 @@ import React, { useMemo } from 'react';
 import { MarkdownRenderer } from '../MarkdownRenderer';
 import { VirtualizedTextRenderer } from '../VirtualizedTextRenderer';
 import { StreamingMessage } from '../StreamingMessage';
+import { AgentRemindersPanel } from '../AgentRemindersPanel';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { useContextFilesStore } from '@/stores/ContextFilesStore';
+import { useAgentSteeringStore } from '@/stores/AgentSteeringStore';
 import type { ChatMessage } from '@/types/chat';
 import { 
   Brain, 
@@ -23,6 +25,7 @@ interface AgentMessageProps {
 
 export const AgentMessage: React.FC<AgentMessageProps> = ({ message }) => {
   const { contextFiles } = useContextFilesStore();
+  const { evaluateSpecs } = useAgentSteeringStore();
 
   // Analyze context relevance for this message
   const contextAnalysis = useMemo(() => {
@@ -46,6 +49,30 @@ export const AgentMessage: React.FC<AgentMessageProps> = ({ message }) => {
       hasContextRelevance: discussedFiles.length > 0 || mentionedExtensions.length > 0,
     };
   }, [message.content, contextFiles]);
+
+  // Evaluate steering specs when message is rendered
+  React.useEffect(() => {
+    if (message.role === 'assistant' && !message.isStreaming) {
+      // Create evaluation context from current message state
+      const context = {
+        messageId: message.id,
+        conversationLength: 1, // This would be passed from parent component ideally
+        contextFilesCount: contextFiles.length,
+        lastMessageTimestamp: message.timestamp,
+        currentTimestamp: Date.now(),
+        modelType: message.model,
+        lastPlanStep: message.plan ? {
+          status: message.plan.plan.find(step => step.status === 'in_progress')?.status || 
+                  message.plan.plan.find(step => step.status === 'completed')?.status || 'pending',
+          step: message.plan.plan.find(step => step.status === 'in_progress')?.step || 
+                message.plan.plan.find(step => step.status === 'completed')?.step || ''
+        } : undefined,
+      };
+      
+      // Evaluate specs and create reminders
+      evaluateSpecs(context);
+    }
+  }, [message, contextFiles.length, evaluateSpecs]);
 
   const getFileTypeIcon = (type: string) => {
     switch (type) {
@@ -214,6 +241,9 @@ export const AgentMessage: React.FC<AgentMessageProps> = ({ message }) => {
           </div>
         </Card>
       )}
+      
+      {/* Agent steering reminders */}
+      <AgentRemindersPanel className="mt-3" />
     </div>
   );
 };
