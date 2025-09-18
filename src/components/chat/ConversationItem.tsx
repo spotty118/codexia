@@ -13,9 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { Conversation } from "@/types/chat";
-import { useConversationStore } from "@/stores/ConversationStore";
-import { DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { Tag } from "lucide-react";
+
 
 interface ConversationItemProps {
   conversation: Conversation;
@@ -40,7 +38,6 @@ export function ConversationItem({
   onDeleteConversation,
   onSelectSession,
 }: ConversationItemProps) {
-  const { categories, setConversationCategory } = useConversationStore();
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp);
     const now = new Date();
@@ -140,31 +137,6 @@ export function ConversationItem({
                     </>
                   )}
                 </DropdownMenuItem>
-                {/* Category assignment */}
-                {conversation.categoryId && (
-                  <DropdownMenuItem
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setConversationCategory(conversation.id, null);
-                    }}
-                  >
-                    <Tag className="h-3 w-3 mr-2" />
-                    Remove from category
-                  </DropdownMenuItem>
-                )}
-                {categories.length > 0 && <DropdownMenuSeparator />}
-                {categories.map((cat) => (
-                  <DropdownMenuItem
-                    key={cat.id}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setConversationCategory(conversation.id, cat.id);
-                    }}
-                  >
-                    <Tag className="h-3 w-3 mr-2" />
-                    Add to “{cat.name}”
-                  </DropdownMenuItem>
-                ))}
 
                 <DropdownMenuItem
                   onClick={(e) => onDeleteConversation(conversation.id, e)}
