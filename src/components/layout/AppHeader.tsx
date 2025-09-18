@@ -8,6 +8,7 @@ import {
   Moon,
   Brain,
   Palette,
+  Target,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +17,7 @@ import { useLayoutStore } from "@/stores/layoutStore";
 import { invoke } from "@tauri-apps/api/core";
 import { useState, useEffect } from "react";
 import { McpDialog } from "../dialogs/McpDialog";
+import { AgentSteeringConfig } from "../dialogs/AgentSteeringConfig";
 import { useThemeStore, type Accent } from "@/stores/ThemeStore";
 import { useSettingsStore } from "@/stores/SettingsStore";
 import { useAuth } from "@/hooks/useAuth";
@@ -108,12 +110,23 @@ export function AppHeader() {
 
       <span className="flex gap-0 h-6">
         {location.pathname === "/chat" && (
-          <McpDialog>
-            <Button variant="ghost" className="flex gap-1 h-6">
-              <Usb />
-              MCP
-            </Button>
-          </McpDialog>
+          <>
+            <McpDialog>
+              <Button variant="ghost" className="flex gap-1 h-6">
+                <Usb />
+                MCP
+              </Button>
+            </McpDialog>
+            
+            <AgentSteeringConfig 
+              trigger={
+                <Button variant="ghost" className="flex gap-1 h-6">
+                  <Target className="w-4 h-4" />
+                  Steering
+                </Button>
+              }
+            />
+          </>
         )}
 
         <Link
