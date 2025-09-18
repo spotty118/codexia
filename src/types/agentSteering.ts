@@ -34,6 +34,14 @@ export interface AgentSteeringSpec {
   // Configuration
   max_activations?: number; // Limit how many times this can trigger
   cooldown_ms?: number; // Minimum time between activations
+  // App type information to help keep specs focused
+  app_type?: {
+    framework: string;
+    detected_at: number;
+    workspace_path?: string;
+    confidence?: 'high' | 'medium' | 'low';
+    details?: Record<string, any>;
+  };
   created_at: number;
   updated_at: number;
 }
@@ -124,6 +132,57 @@ export const DEFAULT_STEERING_TEMPLATES: SteeringSpecTemplate[] = [
     actions: [{ 
       type: 'reminder', 
       message: "This is a long conversation. Consider summarizing progress or breaking into subtasks.",
+      priority: 'medium' 
+    }]
+  },
+  // App type-specific templates
+  {
+    name: "Web App UX Focus",
+    description: "Remind to consider user experience and web-specific concerns",
+    triggers: [{ type: 'message_count', count: 10 }],
+    actions: [{ 
+      type: 'reminder', 
+      message: "For this web application, consider user experience, responsive design, and accessibility. Are we optimizing for web performance?",
+      priority: 'medium' 
+    }]
+  },
+  {
+    name: "Backend API Design Focus",
+    description: "Remind to consider API design and backend architecture",
+    triggers: [{ type: 'plan_step', stepStatus: 'in_progress' }],
+    actions: [{ 
+      type: 'reminder', 
+      message: "For this backend service, consider API design, data consistency, scalability, and error handling patterns.",
+      priority: 'medium' 
+    }]
+  },
+  {
+    name: "Mobile App Platform Focus",
+    description: "Remind to consider mobile-specific patterns and platform guidelines",
+    triggers: [{ type: 'context_change' }],
+    actions: [{ 
+      type: 'reminder', 
+      message: "For this mobile app, consider platform-specific guidelines, performance, offline functionality, and native user patterns.",
+      priority: 'medium' 
+    }]
+  },
+  {
+    name: "Desktop App Integration Focus",
+    description: "Remind to consider desktop integration and native patterns",
+    triggers: [{ type: 'message_count', count: 15 }],
+    actions: [{ 
+      type: 'reminder', 
+      message: "For this desktop application, consider system integration, file management, keyboard shortcuts, and native desktop patterns.",
+      priority: 'medium' 
+    }]
+  },
+  {
+    name: "Library API Design Focus",
+    description: "Remind to consider developer experience and API usability",
+    triggers: [{ type: 'plan_step', stepStatus: 'completed' }],
+    actions: [{ 
+      type: 'reminder', 
+      message: "For this library, consider API design, developer experience, documentation quality, and backwards compatibility.",
       priority: 'medium' 
     }]
   }

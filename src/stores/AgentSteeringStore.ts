@@ -9,16 +9,22 @@ import type {
   SteeringAction
 } from '@/types/agentSteering';
 import { DEFAULT_STEERING_TEMPLATES } from '@/types/agentSteering';
+import { detectAppType, type AppTypeInfo } from '@/utils/appTypeDetection';
+import { useFolderStore } from '@/stores/FolderStore';
 
 const generateId = () => Math.random().toString(36).substring(2) + Date.now().toString(36);
 
 interface AgentSteeringStore extends AgentSteeringState {
   // Spec management
-  createSpec: (name: string, description?: string) => string;
+  createSpec: (name: string, description?: string, autoDetectAppType?: boolean) => Promise<string>;
   updateSpec: (id: string, updates: Partial<AgentSteeringSpec>) => void;
   deleteSpec: (id: string) => void;
   toggleSpec: (id: string) => void;
-  createSpecFromTemplate: (templateIndex: number) => string;
+  createSpecFromTemplate: (templateIndex: number, autoDetectAppType?: boolean) => Promise<string>;
+  
+  // App type utilities
+  detectAndAttachAppType: (specId: string, workspacePath?: string) => Promise<void>;
+  getAppTypeFocusedSpecs: (appType?: string) => AgentSteeringSpec[];
   
   // Reminder management
   createReminder: (specId: string, message: string, priority: AgentReminder['priority'], scheduledFor?: number) => string;
@@ -62,9 +68,26 @@ export const useAgentSteeringStore = create<AgentSteeringStore>()(
       activeReminders: [],
       cooldownSpecs: {},
 
-      createSpec: (name: string, description?: string) => {
+      createSpec: async (name: string, description?: string, autoDetectAppType: boolean = true) => {
         const id = generateId();
         const now = Date.now();
+        
+        // Get current workspace for app type detection
+        let appTypeInfo: AppTypeInfo | null = null;
+        let workspace: string | null = null;
+        
+        if (autoDetectAppType) {
+          try {
+            // Access folder store to get current workspace
+            workspace = useFolderStore.getState().currentFolder;
+            if (workspace) {
+              appTypeInfo = await detectAppType(workspace);
+            }
+          } catch (error) {
+            console.warn('Failed to detect app type:', error);
+          }
+        }
+        
         const spec: AgentSteeringSpec = {
           id,
           name,
@@ -74,6 +97,13 @@ export const useAgentSteeringStore = create<AgentSteeringStore>()(
           actions: [],
           created_at: now,
           updated_at: now,
+          app_type: appTypeInfo ? {
+            framework: appTypeInfo.framework,
+            detected_at: appTypeInfo.detected_at,
+            workspace_path: appTypeInfo.workspace_path,
+            confidence: appTypeInfo.confidence,
+            details: appTypeInfo.details,
+          } : undefined,
         };
         
         set(state => ({
@@ -115,12 +145,12 @@ export const useAgentSteeringStore = create<AgentSteeringStore>()(
         }
       },
 
-      createSpecFromTemplate: (templateIndex: number) => {
+      createSpecFromTemplate: async (templateIndex: number, autoDetectAppType: boolean = true) => {
         const template = DEFAULT_STEERING_TEMPLATES[templateIndex];
         if (!template) return '';
         
         const { createSpec, updateSpec } = get();
-        const id = createSpec(template.name, template.description);
+        const id = await createSpec(template.name, template.description, autoDetectAppType);
         
         updateSpec(id, {
           triggers: template.triggers,
@@ -129,6 +159,41 @@ export const useAgentSteeringStore = create<AgentSteeringStore>()(
         });
         
         return id;
+      },
+
+      detectAndAttachAppType: async (specId: string, workspacePath?: string) => {
+        try {
+          const workspace = workspacePath || useFolderStore.getState().currentFolder;
+          if (!workspace) return;
+          
+          const appTypeInfo = await detectAppType(workspace);
+          if (appTypeInfo) {
+            const { updateSpec } = get();
+            updateSpec(specId, {
+              app_type: {
+                framework: appTypeInfo.framework,
+                detected_at: appTypeInfo.detected_at,
+                workspace_path: appTypeInfo.workspace_path,
+                confidence: appTypeInfo.confidence,
+                details: appTypeInfo.details,
+              }
+            });
+          }
+        } catch (error) {
+          console.warn('Failed to detect and attach app type:', error);
+        }
+      },
+
+      getAppTypeFocusedSpecs: (appType?: string) => {
+        const state = get();
+        if (!appType) {
+          return Object.values(state.specs);
+        }
+        
+        return Object.values(state.specs).filter(spec => 
+          spec.app_type?.framework === appType || 
+          spec.app_type?.details?.primary_language === appType
+        );
       },
 
       createReminder: (specId: string, message: string, priority: AgentReminder['priority'], scheduledFor?: number) => {

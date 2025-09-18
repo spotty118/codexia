@@ -21,15 +21,24 @@ import {
   TabsTrigger,
 } from '@/components/ui/tabs';
 import { useAgentSteeringStore } from '@/stores/AgentSteeringStore';
+import { useFolderStore } from '@/stores/FolderStore';
 import type { SteeringTrigger, SteeringAction } from '@/types/agentSteering';
 import { DEFAULT_STEERING_TEMPLATES } from '@/types/agentSteering';
+import { getAppTypeDisplayName, getAppTypeFocusGuidance } from '@/utils/appTypeDetection';
 import { 
   Target, 
   Plus, 
   Settings, 
   Trash2, 
   Brain,
-  Copy
+  Copy,
+  Globe,
+  Smartphone,
+  Monitor,
+  Server,
+  Package,
+  HelpCircle,
+  Lightbulb
 } from 'lucide-react';
 
 interface AgentSteeringConfigProps {
@@ -41,6 +50,9 @@ export const AgentSteeringConfig: React.FC<AgentSteeringConfigProps> = ({ trigge
   const [selectedSpec, setSelectedSpec] = useState<string | null>(null);
   const [newSpecName, setNewSpecName] = useState('');
   const [newSpecDescription, setNewSpecDescription] = useState('');
+  const [isCreatingSpec, setIsCreatingSpec] = useState(false);
+  
+  const { currentFolder } = useFolderStore();
   
   const {
     specs,
@@ -51,19 +63,65 @@ export const AgentSteeringConfig: React.FC<AgentSteeringConfigProps> = ({ trigge
     getSpecActivationCount,
   } = useAgentSteeringStore();
 
-  const handleCreateSpec = () => {
+  const handleCreateSpec = async () => {
     if (!newSpecName.trim()) return;
     
-    const id = createSpec(newSpecName.trim(), newSpecDescription.trim() || undefined);
-    setSelectedSpec(id);
-    setNewSpecName('');
-    setNewSpecDescription('');
+    setIsCreatingSpec(true);
+    try {
+      const id = await createSpec(newSpecName.trim(), newSpecDescription.trim() || undefined);
+      setSelectedSpec(id);
+      setNewSpecName('');
+      setNewSpecDescription('');
+    } catch (error) {
+      console.error('Failed to create spec:', error);
+    } finally {
+      setIsCreatingSpec(false);
+    }
   };
 
-  const handleCreateFromTemplate = (templateIndex: number) => {
-    const id = createSpecFromTemplate(templateIndex);
-    if (id) {
-      setSelectedSpec(id);
+  const handleCreateFromTemplate = async (templateIndex: number) => {
+    setIsCreatingSpec(true);
+    try {
+      const id = await createSpecFromTemplate(templateIndex);
+      if (id) {
+        setSelectedSpec(id);
+      }
+    } catch (error) {
+      console.error('Failed to create spec from template:', error);
+    } finally {
+      setIsCreatingSpec(false);
+    }
+  };
+
+  const getAppTypeIcon = (appType?: string) => {
+    if (!appType) return <HelpCircle className="h-4 w-4 text-muted-foreground" />;
+    
+    switch (appType) {
+      case 'web':
+        return <Globe className="h-4 w-4 text-blue-500" />;
+      case 'mobile':
+        return <Smartphone className="h-4 w-4 text-green-500" />;
+      case 'desktop':
+        return <Monitor className="h-4 w-4 text-purple-500" />;
+      case 'backend':
+        return <Server className="h-4 w-4 text-orange-500" />;
+      case 'library':
+        return <Package className="h-4 w-4 text-cyan-500" />;
+      default:
+        return <HelpCircle className="h-4 w-4 text-muted-foreground" />;
+    }
+  };
+
+  const getAppTypeColor = (confidence?: string) => {
+    switch (confidence) {
+      case 'high':
+        return 'border-green-200 bg-green-50 dark:border-green-700 dark:bg-green-900/20';
+      case 'medium':
+        return 'border-yellow-200 bg-yellow-50 dark:border-yellow-700 dark:bg-yellow-900/20';
+      case 'low':
+        return 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900/20';
+      default:
+        return 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900/20';
     }
   };
 
@@ -133,7 +191,15 @@ export const AgentSteeringConfig: React.FC<AgentSteeringConfigProps> = ({ trigge
             {/* Create new spec */}
             <Card className="p-4">
               <div className="space-y-3">
-                <h3 className="text-sm font-medium">Create New Steering Spec</h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-medium">Create New Steering Spec</h3>
+                  {currentFolder && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Target className="h-3 w-3" />
+                      <span>Auto-detecting app type from: {currentFolder.split('/').pop()}</span>
+                    </div>
+                  )}
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <Label htmlFor="spec-name">Name</Label>
@@ -154,9 +220,9 @@ export const AgentSteeringConfig: React.FC<AgentSteeringConfigProps> = ({ trigge
                     />
                   </div>
                 </div>
-                <Button onClick={handleCreateSpec} disabled={!newSpecName.trim()}>
+                <Button onClick={handleCreateSpec} disabled={!newSpecName.trim() || isCreatingSpec}>
                   <Plus className="h-4 w-4 mr-2" />
-                  Create Spec
+                  {isCreatingSpec ? 'Creating...' : 'Create Spec'}
                 </Button>
               </div>
             </Card>
@@ -179,10 +245,69 @@ export const AgentSteeringConfig: React.FC<AgentSteeringConfigProps> = ({ trigge
                         <Badge variant="outline">
                           {getSpecActivationCount(spec.id)} activations
                         </Badge>
+                        {spec.app_type && (
+                          <div className="flex items-center gap-1">
+                            {getAppTypeIcon(spec.app_type.details?.primary_language || 'unknown')}
+                            <Badge 
+                              variant="outline" 
+                              className={`text-xs ${getAppTypeColor(spec.app_type.confidence)}`}
+                            >
+                              {spec.app_type.framework}
+                            </Badge>
+                          </div>
+                        )}
                       </div>
                       
                       {spec.description && (
                         <p className="text-sm text-muted-foreground">{spec.description}</p>
+                      )}
+                      
+                      {/* App Type Information */}
+                      {spec.app_type && (
+                        <div className={`p-3 rounded-lg border-l-4 ${getAppTypeColor(spec.app_type.confidence)}`}>
+                          <div className="flex items-start gap-2">
+                            {getAppTypeIcon(spec.app_type.details?.primary_language)}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-sm font-medium">
+                                  {getAppTypeDisplayName({
+                                    type: (spec.app_type.details?.primary_language || 'unknown') as any,
+                                    framework: spec.app_type.framework,
+                                    detected_at: spec.app_type.detected_at,
+                                    workspace_path: spec.app_type.workspace_path || '',
+                                    confidence: spec.app_type.confidence || 'low',
+                                    details: spec.app_type.details || {}
+                                  })}
+                                </span>
+                                <Badge variant="outline" className="text-xs">
+                                  {spec.app_type.confidence} confidence
+                                </Badge>
+                              </div>
+                              
+                              {/* App Type Guidance */}
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                  <Lightbulb className="h-3 w-3" />
+                                  <span>Focus areas for this app type:</span>
+                                </div>
+                                <div className="pl-4">
+                                  {getAppTypeFocusGuidance({
+                                    type: (spec.app_type.details?.primary_language || 'unknown') as any,
+                                    framework: spec.app_type.framework,
+                                    detected_at: spec.app_type.detected_at,
+                                    workspace_path: spec.app_type.workspace_path || '',
+                                    confidence: spec.app_type.confidence || 'low',
+                                    details: spec.app_type.details || {}
+                                  }).slice(0, 2).map((guidance, index) => (
+                                    <div key={index} className="text-xs text-muted-foreground">
+                                      • {guidance}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                       )}
                       
                       <div className="space-y-1">
@@ -281,9 +406,10 @@ export const AgentSteeringConfig: React.FC<AgentSteeringConfigProps> = ({ trigge
                       variant="outline"
                       size="sm"
                       onClick={() => handleCreateFromTemplate(index)}
+                      disabled={isCreatingSpec}
                     >
                       <Copy className="h-4 w-4 mr-2" />
-                      Use Template
+                      {isCreatingSpec ? 'Creating...' : 'Use Template'}
                     </Button>
                   </div>
                 </Card>
